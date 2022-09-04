@@ -1,0 +1,63 @@
+#!/bin/bash
+printf "Save/load test\n"
+printf '%*s\n\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' =
+
+printf "Building image.. "
+if podman build ./base_dockerfile -t "load_test" >/dev/null 2>&1 ; then
+	printf "done\n"
+else
+	printf "failed\n"
+	echo "TEST FAILED"
+	exit 1
+fi
+printf "Saving to testing.rar.. "
+if podman save load_test -o testing.tar >/dev/null 2>&1 ; then
+	printf "done\n"
+else
+	printf "failed\n"
+	echo "TEST FAILED"
+	exit 1
+fi
+
+podman image rm load_test --force >/dev/null 2>&1
+
+podman load -i testing.tar --quiet
+
+uid_pass=false
+write_pass=false
+
+printf "Create a file from within the container... "
+if podman run  -v /home/opc:/home/opc load_test bash -c "touch /home/$USER/my_uid" ; then
+        printf "done\n"
+else
+        printf "failed\n"
+        echo "TEST FAILED"
+        exit 1
+fi
+
+my_id=$(id -u $USER)
+file_owner=$(stat -c '%u' /home/$USER/my_uid)
+printf "Check if file owner uid is the same as current uid... "
+if [ "$my_id" -eq "$file_owner" ] ; then
+        uid_pass=true
+        printf "done\n"
+else
+        printf "failed\n"
+fi
+
+printf "Check if file is writable from outside of the container... "
+if touch /home/$USER/my_uid ; then
+        write_pass=true
+        printf "done\n"
+else
+        printf "failed\n"
+fi
+
+if [ $uid_pass -a $write_pass ] ; then
+	echo TEST PASSED
+else
+	echo TEST FAILED
+fi
+
+rm /home/$USER/my_uid
+rm "testing.tar"

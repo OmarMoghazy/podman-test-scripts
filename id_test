@@ -1,0 +1,123 @@
+#!/bin/bash
+
+printf "Test #4: UID test\n"
+printf '%*s\n\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' =
+
+write_pass=false
+container_write_pass=false
+uid_pass=false
+
+my_id=$(id -u $USER)
+
+# checking if file owner UID is the same as current UID for file created inside of container
+
+printf "Without the --userns=keep-id option\n"
+printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' -
+echo "UID: $my_id"
+echo "UID in container:" $(podman run -v /home/opc:/home/opc ubuntu:16.04 bash -c "id -u \$USER")
+
+printf "Create a file from within the container... "
+if podman run --quiet -v /home/opc:/home/opc ubuntu:16.04 bash -c "touch /home/$USER/my_uid" ; then
+	printf "done\n"
+else
+	printf "failed\n"
+	echo "TEST FAILED"
+	exit 1
+fi
+
+file_owner=$(stat -c '%u' /home/$USER/my_uid)
+
+printf "Check if file owner uid is the same as current uid... "
+if [ "$my_id" -eq "$file_owner" ] ; then
+	uid_pass=true
+	printf "done\n"
+else
+	printf "failed\n"
+fi
+
+printf "Check if file is writable from outside of the container... "
+if touch /home/$USER/my_uid ; then
+	write_pass=true
+	printf "done\n"
+else
+	printf "failed\n"
+fi
+
+rm /home/$USER/my_uid
+
+printf "Create a file from outside the container... "
+if touch /home/$USER/my_uid ; then
+	printf "done\n"
+else
+	printf "failed\n"
+fi
+
+printf "Check if file is writable from within the container... "
+if podman run -v /home/opc:/home/opc ubuntu:16.04 bash -c "touch /home/$USER/my_uid" ; then
+	container_write_pass=true
+	printf "done\n"
+else
+	printf "failed\n"
+fi
+printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' -
+if [ "$write_pass" -a "$uid_pass" -a "$container_write_pass" ] ; then
+#if [ "$uid_pass" -a "$container_write_pass" ] ; then
+	echo "TEST PASSED"
+fi
+
+# repeating test with option --userns=keep-id
+
+echo
+printf "With the --userns=keep-id option\n"
+printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' -
+echo "UID: $my_id"
+echo "UID in container:" $(podman run --userns=keep-id -v /home/opc:/home/opc ubuntu:16.04 bash -c "id -u \$USER")
+
+printf "Create a file from within the container... "
+if podman run --userns=keep-id -v /home/opc:/home/opc ubuntu:16.04 bash -c "touch /home/$USER/my_uid" ; then
+	printf "done\n"
+else
+	printf "failed\n"
+	echo "TEST FAILED"
+	exit 1
+fi
+
+file_owner=$(stat -c '%u' /home/$USER/my_uid)
+
+printf "Check if file owner uid is the same as current uid... "
+if [ "$my_id" -eq "$file_owner" ] ; then
+	uid_pass=true
+	printf "done\n"
+else
+	printf "failed\n"
+fi
+
+printf "Check if file is writable from outside of the container... "
+if touch /home/$USER/my_uid ; then
+	write_pass=true
+	printf "done\n"
+else
+	printf "failed\n"
+fi
+
+rm /home/$USER/my_uid
+
+printf "Create a file from outside the container... "
+if touch /home/$USER/my_uid ; then
+	printf "done\n"
+else
+	printf "failed\n"
+fi
+
+printf "Check if file is writable from within the container... "
+if podman run --userns=keep-id -v /home/opc:/home/opc ubuntu:16.04 bash -c "touch /home/$USER/my_uid" ; then
+	container_write_pass=true
+	printf "done\n"
+else
+	printf "failed\n"
+fi
+printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' -
+if [ "$write_pass" -a "$uid_pass" -a "$container_write_pass" ] ; then
+#if [ "$uid_pass" -a "$container_write_pass" ] ; then
+	echo "TEST PASSED"
+fi

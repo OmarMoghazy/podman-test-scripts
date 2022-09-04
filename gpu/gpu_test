@@ -1,0 +1,47 @@
+#!/bin/bash
+
+printf "GPU test\n"
+printf '%*s\n\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' =
+
+printf "Attempting to pull Nvidia Tensorflow image\n"
+printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' -
+if podman pull --quiet nvcr.io/nvidia/tensorflow:20.08-tf1-py3 ; then
+	printf "done\n"
+else
+	printf "failed\n"
+	echo "TEST FAILED"
+	exit 1
+fi
+
+printf "\n"
+
+sanity=false
+performance=false
+
+printf "Running container and checking for GPU\n"
+printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' -
+
+gpu_outside=$(nvidia-smi --query-gpu=gpu_name --format=csv,noheader)
+
+gpu=$(podman run --entrypoint='' --quiet nvcr.io/nvidia/tensorflow:20.08-tf1-py3 bash -c 'nvidia-smi --query-gpu=gpu_name --format=csv,noheader')
+
+if [ -z ${gpu+x} ]; then
+       	echo "No GPU found";
+	echo "TEST FAILED"
+	exit 1
+else
+	echo "GPUS found: '$gpu'";
+	if [ "$gpu" == "$gpu_outside" ] ; then echo done; else echo failed.. some gpus were not detected; fi
+fi
+
+printf "\n"
+
+printf "Running Tensorflow MNIST job\n"
+printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' -
+
+if podman run --entrypoint='' -v $PWD:/projects nvcr.io/nvidia/tensorflow:20.08-tf1-py3 bash -c "TF_CPP_MIN_LOG_LEVEL=3 python /projects/MNIST.py" ; then
+	printf "done\n"
+	printf "TEST PASSED\n"
+else
+	printf "TEST FAILED\n"
+fi

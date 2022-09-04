@@ -1,0 +1,60 @@
+#!/bin/bash
+
+printf "Test #3: subuid/subgid range test\n"
+printf '%*s\n\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' =
+
+
+printf "Pulling image without a sub*id range for user\n"
+printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' -
+
+sed -i -E "/(^$|^$SUDO_USER:)/d" /etc/subuid
+sed -i -E "/(^$|^$SUDO_USER:)/d" /etc/subgid
+
+topdir=$(pwd)
+
+no_range_pass=false
+range_pass=false
+
+sudo -i -u $SUDO_USER bash << EOF
+podman system migrate
+podman image rm test-no-range --force > /dev/null 2>&1
+# podman pull ubuntu
+EOF
+if sudo -i -u $SUDO_USER bash -c "podman build --quiet $topdir -t test-no-range" ; then
+	no_range_pass=false
+	printf "Build should fail but it succeeded\n"
+	#sudo -i -u $SUDO_USER bash -c "podman image rm test-no-range > /dev/null 2>&1"
+else
+	no_range_pass=true
+	printf "Build failed as expected\n"
+fi
+
+
+printf '%*s\n\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' -
+printf "Pulling image with a subuid range for user\n"
+printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' -
+
+echo "$SUDO_USER:100000:65536" > /etc/subuid
+echo "$SUDO_USER:100000:65536" > /etc/subgid
+
+sudo -i -u $SUDO_USER bash << EOF
+podman system migrate
+podman image rm test-range --force > /dev/null 2>&1
+# podman pull ubuntu
+EOF
+if sudo -i -u $SUDO_USER bash -c "podman build --quiet $topdir -t test-range" ; then
+	range_pass=true
+	printf "Build succeeded\n"
+	#sudo -i -u $SUDO_USER bash -c "podman image rm test-range > /dev/null 2>&1"
+else
+	printf "Build failed\n"
+fi
+printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' -
+
+if [ "$no_range_pass" = true ] && [ "$range_pass" = true ] ; then
+	printf "TEST PASSED\n"
+else
+	printf "TEST FAILED\n"
+fi
+
+exit 

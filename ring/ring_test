@@ -1,0 +1,15 @@
+#!/bin/bash
+
+# pull container
+#podman pull krccl/openmpi_base:403
+
+# compile from host 
+
+# compile from within container
+
+# mpirun
+
+#export PMIX_MCA_gds=hash
+# mpirun --mca btl openib,tcp,self --mca orte_tmpdir_base /tmp/podman-mpirun -n 3 podman run --userns=keep-id -v /home/opc/podman-tests/ring:/home/opc/ring --env-host --net=host --pid=host --ipc=host krccl/openmpi_base:403 /home/opc/ring/ringo
+podman run --userns=keep-id -v /home/opc/podman-tests/ring:/home/opc/ring --env-host --net=host --pid=host --ipc=host testing-ring /usr/lib64/openmpi/bin/mpirun  --mca btl openib,tcp,self -np 3 /home/opc/ring/ringo
+export PMIX_MCA_gds=
