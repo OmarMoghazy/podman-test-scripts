@@ -2,6 +2,7 @@
 
 # pull container
 #podman pull krccl/openmpi_base:403
+podman build . -t testing-ring
 
 # compile from host 
 

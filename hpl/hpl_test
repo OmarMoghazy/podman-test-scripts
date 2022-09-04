@@ -1,9 +1,11 @@
 #!/bin/bash
 
-export PMIX_MCA_gds=hash
+#export PMIX_MCA_gds=hash
 
 podman build . -t hpl-test
 
- mpirun -np 2 --mca btl openib,tcp,self --mca orte_tmpdir_base /tmp/podman-mpirun podman run -v $HOME:$HOME --env-host --net=host --pid=host --ipc=host -w $PWD hpl-test:latest
+#mpirun -np 2 --mca btl openib,tcp,self --mca orte_tmpdir_base /tmp/podman-mpirun podman run -v $HOME:$HOME --env-host --net=host --pid=host --ipc=host -w $PWD hpl-test:latest
 
-export PMIX_MCA_gds=
+podman run --userns=keep-id -v $HOME:$HOME --env-host --net=host --pid=host --ipc=host -w $PWD hpl-test:latest mpirun -np 2 --mca btl openib,tcp,self /hpl/bin/ubuntu/xhpl
+
+#export PMIX_MCA_gds=
