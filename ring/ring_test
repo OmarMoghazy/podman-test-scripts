@@ -5,20 +5,22 @@ printf '%*s\n\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' =
 # pull container
 #podman pull krccl/openmpi_base:403
 printf "Attempting to build mpi base container.. "
-if podman build . -t testing-ring > /dev/null 2>&1 ; then
-	printf "done\n"
+if podman build --root=/tmp/podman_tmp . -t testing-ring ; then
+        printf "done\n"
 else
-	printf "failed\n"
-	exit 1
+        printf "failed\n"
+        exit 1
 fi
 
-# compile 
+module load openmpi/4.0.2
+
+# compile
 printf "Attempting to compile ring.c.. "
-if /usr/lib64/openmpi/bin/mpicc -o ring-out ./ring/ring.c > /dev/null 2>&1 ; then
-	printf "done\n"
+if mpicc -o ring-out ./ring/ring.c ; then
+        printf "done\n"
 else
-	printf "failed\n"
-	exit 1
+        printf "failed\n"
+        exit 1
 fi
 
 
@@ -27,13 +29,13 @@ fi
 #export PMIX_MCA_gds=hash
 # mpirun --mca btl openib,tcp,self --mca orte_tmpdir_base /tmp/podman-mpirun -n 3 podman run --userns=keep-id -v /home/opc/podman-tests/ring:/home/opc/ring --env-host --net=host --pid=host --ipc=host krccl/openmpi_base:403 /home/opc/ring/ringo
 printf "Attempting to run ring..\n"
-if podman run --userns=keep-id -v /home/opc/podman-tests/ring:/home/opc/ring --env-host --net=host --pid=host --ipc=host testing-ring /usr/lib64/openmpi/bin/mpirun  --mca btl openib,tcp,self -np 3 /home/opc/ring/ring-out ; then
-	printf "done\n"
-	printf "TEST PASSED\n"
-	exit 0
+if podman run --root=/tmp/podman_tmp --runroot=/tmp/podman_tmp  --userns=keep-id -v ${PWD}:/home/opc/ring --env-host --net=host --pid=host --ipc=host testing-ring /usr/lib64/openmpi/bin/mpirun  --mca btl openib,tcp,self -np 3 /home/opc/ring/ring-out ; then
+        printf "done\n"
+        printf "TEST PASSED\n"
+        exit 0
 else
-	printf "failed\n"
-	printf "TEST FAILED\n"
-	exit 1
+        printf "failed\n"
+        printf "TEST FAILED\n"
+        exit 1
 fi
 #export PMIX_MCA_gds=
