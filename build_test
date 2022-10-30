@@ -2,22 +2,22 @@
 
 topdir=$(pwd)
 
-podman_pass=false
-buildah_pass=false
+podman_pass=
+buildah_pass=
 
 printf "Attempting to build using podman\n"
 printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' -
 
 podman system migrate
-podman image rm podman-test-hello --force > /dev/null 2>&1
-if podman --storage-opt overlay.ignore_chown_errors=true build $topdir -t podman-test-hello --quiet ; then
-	printf "Podman build succeeded\n"
-	podman_pass=true
-	printf "Deleting image... "
-	podman image rm podman-test-hello --force > /dev/null 2>&1
-	printf "done.\n"
+podman image rm podman-test-hello --root=/tmp/podman_tmp --force > /dev/null 2>&1
+if podman --storage-opt overlay.ignore_chown_errors=true --root=/tmp/podman_tmp  build $topdir -t podman-test-hello --quiet ; then
+        printf "Podman build succeeded\n"
+        podman_pass=true
+        printf "Deleting image... "
+        podman image rm podman-test-hello --root=/tmp/podman_tmp  --force > /dev/null 2>&1
+        printf "done.\n"
 else
-	printf "Podman build failed\n"
+        printf "Podman build failed\n"
 fi
 
 printf '%*s\n\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' -
@@ -26,19 +26,19 @@ printf "Attempting to build using buildah\n"
 printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' -
 
 buildah rmi buildah-test-hello > /dev/null 2>&1
-if buildah bud --quiet -t buildah-test-hello $topdir/Dockerfile ; then
-	printf "Buildah bud succeeded\n"
-	buildah_pass=true
-	printf "Deleting image... "
-	buildah rmi buildah-test-hello > /dev/null 2>&1
-	printf "done.\n"
+if buildah bud --root=/tmp/podman_tmp  --quiet -t buildah-test-hello $topdir/Dockerfile ; then
+        printf "Buildah bud succeeded\n"
+        buildah_pass=true
+        printf "Deleting image... "
+        buildah rmi --runroot=/tmp/podman_tmp  buildah-test-hello > /dev/null 2>&1
+        printf "done.\n"
 else
-	printf "Buildah bud failed\n\n"
+        printf "Buildah bud failed\n\n"
 fi
 
 printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' -
 if [ "$podman_pass" = true ] && [ "$buildah_pass" = true ] ; then
-	printf "TEST PASSED\n"
+        printf "TEST PASSED\n"
 else
-	printf "TEST FAILED\n"
+        printf "TEST FAILED\n"
 fi
