@@ -4,20 +4,20 @@ printf '%*s\n\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' =
 
 #export PMIX_MCA_gds=hash
 printf "Attempting to build base container.. "
-if podman build . -t hpl-test > /dev/null 2>&1 ; then
-	printf "done\n"
+if podman build --root=/tmp/podman_tmp . -t hpl-test; then
+        printf "done\n"
 else
-	printf " failed\n"
-	exit 1
+        printf " failed\n"
+        exit 1
 fi
 
 #mpirun -np 2 --mca btl openib,tcp,self --mca orte_tmpdir_base /tmp/podman-mpirun podman run -v $HOME:$HOME --env-host --net=host --pid=host --ipc=host -w $PWD hpl-test:latest
 
 printf "Attempting to run HPL\n"
-if podman run --userns=keep-id -v $HOME:$HOME --env-host --net=host --pid=host --ipc=host -w $PWD hpl-test:latest mpirun -np 2 --mca btl openib,tcp,self /hpl/bin/ubuntu/xhpl ; then
-	printf "TEST PASSED\n"
+if podman --storage-opt overlay.ignore_chown_errors=true run --root=/tmp/podman_tmp --userns=keep-id -v $HOME:$HOME --env-host --net=host --pid=host --ipc=host -w $PWD hpl-test:latest mpirun -np 2 --mca btl openib,tcp,self /hpl/bin/ubuntu/xhpl ; then
+        printf "TEST PASSED\n"
 else
-	printf "TEST FAILED\n"
+        printf "TEST FAILED\n"
 fi
 
 #export PMIX_MCA_gds=
