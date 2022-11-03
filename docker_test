@@ -1,0 +1,54 @@
+#!/bin/bash
+
+# go to the "base_dockerfile" directory
+
+#docker build . -t testbuild
+#docker save testbuild --output docker_image.tar
+
+
+
+load_success=
+
+if podman load --root=/tmp/podman_tmp -i docker_image.tar ; then
+        load_success=true
+else
+        printf "TEST FAILED\n"
+fi
+
+uid_pass=
+write_pass=
+
+printf "Create a file from within the container... "
+if podman run  --root=/tmp/podman_tmp  -v .:/tests load_test bash -c "touch /tests/my_uid" ; then
+        printf "done\n"
+else
+        printf "failed\n"
+        echo "TEST FAILED"
+        exit 1
+fi
+
+my_id=$(id -u $USER)
+file_owner=$(stat -c '%u' ./my_uid)
+printf "Check if file owner uid is the same as current uid... "
+if [ "$my_id" -eq "$file_owner" ] ; then
+        uid_pass=true
+        printf "done\n"
+else
+        printf "failed\n"
+fi
+
+printf "Check if file is writable from outside of the container... "
+if touch ./my_uid ; then
+        write_pass=true
+        printf "done\n"
+else
+        printf "failed\n"
+fi
+
+if [ $uid_pass -a $write_pass ] ; then
+        echo TEST PASSED
+else
+        echo TEST FAILED
+fi
+
+rm ./my_uid
