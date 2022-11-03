@@ -19,7 +19,7 @@ uid_pass=
 write_pass=
 
 printf "Create a file from within the container... "
-if podman run  --root=/tmp/podman_tmp  -v .:/tests load_test bash -c "touch /tests/my_uid" ; then
+if podman run  --root=/tmp/podman_tmp  -v .:/tests testbuild bash -c "touch /tests/my_uid" ; then
         printf "done\n"
 else
         printf "failed\n"
